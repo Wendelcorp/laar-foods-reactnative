@@ -83,6 +83,7 @@ const colorFor = (code?: string) => {
 export default function App() {
   const [apiKey, setApiKey] = React.useState<string | null>(null);
   const [editingKey, setEditingKey] = React.useState<string>('');
+  const [keyPromptDismissed, setKeyPromptDismissed] = React.useState<boolean>(false);
   const [loading, setLoading] = React.useState<boolean>(false);
   const [refreshing, setRefreshing] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -224,6 +225,7 @@ export default function App() {
         break;
       case 'Change Key':
         setMenuVisible(false);
+        setKeyPromptDismissed(false);
         clearKey();
         break;
       case 'Logs':
@@ -401,7 +403,7 @@ export default function App() {
     return results;
   }
 
-  if (!apiKey) {
+  if (!apiKey && !keyPromptDismissed) {
     return (
       <SafeAreaView style={styles.containerCenter}>
         <Text style={styles.title}>Enter API Key</Text>
@@ -417,6 +419,9 @@ export default function App() {
         />
         <TouchableOpacity onPress={saveKey} style={styles.button}>
           <Text style={styles.buttonText}>Save</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setKeyPromptDismissed(true)} style={[styles.secondaryButton, { marginTop: 10 }]}>
+          <Text style={styles.secondaryButtonText}>Skip for now</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -437,9 +442,25 @@ export default function App() {
         <View style={styles.menuOverlay}>
           <TouchableOpacity style={styles.menuBackdrop} activeOpacity={1} onPress={() => setMenuVisible(false)} />
           <View style={styles.menuPanel}>
-            {['Home','Labour','Inventory','Logs','On Shift','Job Letter','Contacts','Calibration','Filters','Change Key'].map((label) => (
-              <TouchableOpacity key={label} style={styles.menuItem} onPress={() => handleMenuSelect(label)}>
-                <Text style={styles.menuItemText}>{label}</Text>
+            {[
+              { label: 'Home' },
+              { label: 'Labour' },
+              { label: 'Inventory', disabled: true },
+              { label: 'Logs' },
+              { label: 'On Shift' },
+              { label: 'Job Letter' },
+              { label: 'Contacts' },
+              { label: 'Calibration', disabled: true },
+              { label: 'Filters', disabled: true },
+              { label: 'Change Key' },
+            ].map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={[styles.menuItem, item.disabled && { opacity: 0.4 }]}
+                onPress={() => handleMenuSelect(item.label)}
+                disabled={!!item.disabled}
+              >
+                <Text style={[styles.menuItemText, item.disabled && styles.menuItemTextDisabled]}>{item.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -907,6 +928,9 @@ const styles = StyleSheet.create({
   menuItemText: {
     color: '#0f172a',
     fontWeight: '600',
+  },
+  menuItemTextDisabled: {
+    color: '#9ca3af',
   },
 });
 
