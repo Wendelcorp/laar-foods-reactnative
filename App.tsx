@@ -634,13 +634,13 @@ export default function App() {
                   return (
                     <View style={[styles.badgeRow, { marginTop: 10, justifyContent: 'center' }]}>
                       <View style={[styles.badge, { backgroundColor: colorFor(gps.am.color_code) }]}>
-                        <Text style={styles.badgeText}>AM {gps.am.value}%</Text>
+                        <Text style={styles.badgeText}>AM {gps.am.value}</Text>
                       </View>
                       <View style={[styles.badge, { backgroundColor: colorFor(gps.brunch.color_code) }]}>
-                        <Text style={styles.badgeText}>BR {gps.brunch.value}%</Text>
+                        <Text style={styles.badgeText}>BR {gps.brunch.value}</Text>
                       </View>
                       <View style={[styles.badge, { backgroundColor: colorFor(gps.pm.color_code) }]}>
-                        <Text style={styles.badgeText}>PM {gps.pm.value}%</Text>
+                        <Text style={styles.badgeText}>PM {gps.pm.value}</Text>
                       </View>
                     </View>
                   );
