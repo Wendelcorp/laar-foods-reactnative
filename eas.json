@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 10.0.0"
+    "version": ">= 10.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "internal": {
@@ -16,6 +17,15 @@
     "apk": {
       "android": {
         "buildType": "apk",
+        "resourceClass": "medium"
+      }
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "medium"
+      },
+      "android": {
+        "buildType": "app-bundle",
         "resourceClass": "medium"
       }
     }
