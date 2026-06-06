@@ -12,14 +12,14 @@ import { colors } from './theme';
 enableScreens(true);
 
 const HomeScreen = React.lazy(() => import('./screens/HomeScreen'));
-const LabourScreen = React.lazy(() => import('./screens/LabourScreen'));
 const OnShiftScreen = React.lazy(() => import('./screens/OnShiftScreen'));
 const ZenputScreen = React.lazy(() => import('./screens/ZenputScreen'));
+const GpsScreen = React.lazy(() => import('./screens/GpsScreen'));
 const MoreStack = React.lazy(() => import('./navigation/MoreStack'));
 
 type TabParamList = {
   Home: undefined;
-  Labour: undefined;
+  GPS: undefined;
   OnShift: undefined;
   Logs: undefined;
   More: undefined;
@@ -27,7 +27,7 @@ type TabParamList = {
 
 const tabIcons = {
   Home: { active: 'home' as const, inactive: 'home-outline' as const },
-  Labour: { active: 'people' as const, inactive: 'people-outline' as const },
+  GPS: { active: 'speedometer' as const, inactive: 'speedometer-outline' as const },
   OnShift: { active: 'time' as const, inactive: 'time-outline' as const },
   Logs: { active: 'document-text' as const, inactive: 'document-text-outline' as const },
   More: { active: 'menu' as const, inactive: 'menu-outline' as const },
@@ -90,10 +90,10 @@ function MainTabs({
           </React.Suspense>
         )}
       </Tab.Screen>
-      <Tab.Screen name="Labour" options={{ title: 'Labour' }}>
+      <Tab.Screen name="GPS" options={{ title: 'GPS' }}>
         {() => (
           <React.Suspense fallback={<ScreenFallback />}>
-            <LabourScreen />
+            <GpsScreen embedded />
           </React.Suspense>
         )}
       </Tab.Screen>

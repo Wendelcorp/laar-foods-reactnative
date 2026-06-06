@@ -15,10 +15,11 @@ type MoreScreenProps = {
 const menuItems: Array<{
   id: string;
   label: string;
-  action: 'contacts' | 'job-letter' | 'night-delivery' | 'change-key' | 'coming-soon';
+  action: 'contacts' | 'job-letter' | 'night-delivery' | 'labour' | 'change-key' | 'coming-soon';
   disabled?: boolean;
 }> = [
   { id: 'contacts', label: 'Contacts', action: 'contacts' },
+  { id: 'labour', label: 'Labour', action: 'labour' },
   { id: 'job-letter', label: 'Job Letter', action: 'job-letter' },
   { id: 'night-delivery', label: 'Night Delivery', action: 'night-delivery' },
   { id: 'change-api-key', label: 'Change API Key', action: 'change-key' },
@@ -42,6 +43,10 @@ export default function MoreScreen({ onChangeKey }: MoreScreenProps) {
     }
     if (action === 'night-delivery') {
       navigation.navigate('NightDelivery');
+      return;
+    }
+    if (action === 'labour') {
+      navigation.navigate('Labour');
       return;
     }
     navigation.navigate('JobLetter');

@@ -7,12 +7,14 @@ const MoreScreen = React.lazy(() => import('../screens/MoreScreen'));
 const ContactsScreen = React.lazy(() => import('../screens/ContactsScreen'));
 const JobLetterScreen = React.lazy(() => import('../screens/JobLetterScreen'));
 const NightDeliveryScreen = React.lazy(() => import('../screens/NightDeliveryScreen'));
+const LabourScreen = React.lazy(() => import('../screens/LabourScreen'));
 
 export type MoreStackParamList = {
   MoreMenu: undefined;
   Contacts: undefined;
   JobLetter: undefined;
   NightDelivery: undefined;
+  Labour: undefined;
 };
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
@@ -57,6 +59,13 @@ export default function MoreStack({ onChangeKey }: MoreStackProps) {
         {() => (
           <React.Suspense fallback={<ScreenFallback />}>
             <NightDeliveryScreen />
+          </React.Suspense>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="Labour">
+        {() => (
+          <React.Suspense fallback={<ScreenFallback />}>
+            <LabourScreen />
           </React.Suspense>
         )}
       </Stack.Screen>
