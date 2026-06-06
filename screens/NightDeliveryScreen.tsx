@@ -17,10 +17,17 @@ import {
 } from '../api/nightDeliveries';
 import { AppHeader } from '../components/AppHeader';
 import { StoreCard } from '../components/StoreCard';
+import { StoreCardHeader } from '../components/StoreCardHeader';
 import { colors, spacing } from '../theme';
 import { sharedStyles } from '../styles/shared';
 
 const TRACKED_STORE_IDS = [6, 941] as const;
+
+type StoreNightDelivery = {
+  storeId: number;
+  average: number | null;
+  days: Array<{ date: string; night_sales: number }>;
+};
 
 function formatCurrency(value?: number | null) {
   if (value === null || value === undefined || Number.isNaN(value)) return '-';
@@ -57,6 +64,20 @@ function computeAverage(days: NightDeliveryDay[], storeId: number): number | nul
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
+function buildStoreSections(days: NightDeliveryDay[]): StoreNightDelivery[] {
+  return TRACKED_STORE_IDS.map((storeId) => ({
+    storeId,
+    average: computeAverage(days, storeId),
+    days: days
+      .map((day) => {
+        const sales = getStoreSales(day, storeId);
+        if (sales == null) return null;
+        return { date: day.date, night_sales: sales };
+      })
+      .filter((entry): entry is { date: string; night_sales: number } => entry != null),
+  }));
+}
+
 export default function NightDeliveryScreen() {
   const navigation = useNavigation();
   const [data, setData] = React.useState<NightDeliveriesHistoryResponse | null>(null);
@@ -87,13 +108,9 @@ export default function NightDeliveryScreen() {
     fetchAll({ isRefresh: true });
   }, [fetchAll]);
 
-  const days = data?.stores ?? [];
-  const avgByStore = React.useMemo(
-    () =>
-      Object.fromEntries(
-        TRACKED_STORE_IDS.map((id) => [id, computeAverage(days, id)]),
-      ) as Record<(typeof TRACKED_STORE_IDS)[number], number | null>,
-    [days],
+  const storeSections = React.useMemo(
+    () => buildStoreSections(data?.stores ?? []),
+    [data?.stores],
   );
 
   const headerAction = (
@@ -102,23 +119,31 @@ export default function NightDeliveryScreen() {
     </TouchableOpacity>
   );
 
-  const listHeader = data ? (
-    <View style={styles.summarySection}>
-      <Text style={styles.rangeLabel}>
-        Last 30 days · {formatDate(data.start_date)} – {formatDate(data.end_date)}
-      </Text>
-      <View style={styles.summaryRow}>
-        {TRACKED_STORE_IDS.map((storeId) => (
-          <View key={storeId} style={styles.summaryCard}>
-            <StoreCard>
-              <Text style={sharedStyles.metricLabel}>Store {storeId} Avg</Text>
-              <Text style={sharedStyles.metricValue}>{formatCurrency(avgByStore[storeId])}</Text>
-            </StoreCard>
+  const renderStore = ({ item }: { item: StoreNightDelivery }) => (
+    <View style={styles.storeSection}>
+      <StoreCard variant="hero">
+        <StoreCardHeader
+          storeId={item.storeId}
+          trailing={
+            <View style={sharedStyles.summaryPill}>
+              <Text style={sharedStyles.summaryPillText}>
+                Avg {formatCurrency(item.average)}
+              </Text>
+            </View>
+          }
+        />
+        {item.days.map((day, idx) => (
+          <View
+            key={day.date}
+            style={[styles.dayRow, idx === item.days.length - 1 && styles.dayRowLast]}
+          >
+            <Text style={styles.dayLabel}>{formatDate(day.date)}</Text>
+            <Text style={styles.dayValue}>{formatCurrency(day.night_sales)}</Text>
           </View>
         ))}
-      </View>
+      </StoreCard>
     </View>
-  ) : null;
+  );
 
   return (
     <SafeAreaView style={sharedStyles.screen} edges={['top']}>
@@ -132,34 +157,27 @@ export default function NightDeliveryScreen() {
       ) : error ? (
         <View style={sharedStyles.centerBox}>
           <Text style={sharedStyles.error}>{error}</Text>
+          <TouchableOpacity onPress={() => fetchAll()} style={sharedStyles.primaryButton}>
+            <Text style={sharedStyles.primaryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={days}
-          keyExtractor={(item) => item.date}
+          data={storeSections}
+          keyExtractor={(item) => String(item.storeId)}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           contentContainerStyle={sharedStyles.listContent}
-          ListHeaderComponent={listHeader}
-          renderItem={({ item }) => {
-            const store6 = getStoreSales(item, 6);
-            const store941 = getStoreSales(item, 941);
-            return (
-              <StoreCard>
-                <Text style={styles.dayLabel}>{formatDate(item.date)}</Text>
-                <View style={styles.dayRow}>
-                  <View style={styles.dayMetric}>
-                    <Text style={sharedStyles.metricLabel}>Store 6</Text>
-                    <Text style={styles.dayValue}>{formatCurrency(store6)}</Text>
-                  </View>
-                  <View style={styles.dayMetric}>
-                    <Text style={sharedStyles.metricLabel}>Store 941</Text>
-                    <Text style={styles.dayValue}>{formatCurrency(store941)}</Text>
-                  </View>
-                </View>
-              </StoreCard>
-            );
-          }}
-          ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+          ListHeaderComponent={
+            data ? (
+              <View style={styles.summaryHeader}>
+                <Text style={styles.rangeLabel}>Last 30 days</Text>
+                <Text style={styles.dateRange}>
+                  {formatDate(data.start_date)} – {formatDate(data.end_date)}
+                </Text>
+              </View>
+            ) : null
+          }
+          renderItem={renderStore}
           ListEmptyComponent={
             !loading ? (
               <View style={sharedStyles.centerBox}>
@@ -174,37 +192,45 @@ export default function NightDeliveryScreen() {
 }
 
 const styles = StyleSheet.create({
-  summarySection: {
-    marginBottom: spacing.lg,
-    gap: spacing.md,
+  summaryHeader: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    gap: spacing.sm,
   },
   rangeLabel: {
     color: colors.textSecondary,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
+  dateRange: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
   },
-  summaryCard: {
-    flex: 1,
-  },
-  dayLabel: {
-    color: colors.textPrimary,
-    fontWeight: '700',
-    fontSize: 16,
-    marginBottom: spacing.md,
+  storeSection: {
+    marginBottom: spacing.xl,
   },
   dayRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderDefault,
   },
-  dayMetric: {
+  dayRowLast: {
+    borderBottomWidth: 0,
+  },
+  dayLabel: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
     flex: 1,
+    marginRight: spacing.md,
   },
   dayValue: {
-    ...sharedStyles.metricValue,
-    fontSize: 18,
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

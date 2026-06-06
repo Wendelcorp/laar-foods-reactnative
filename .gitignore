@@ -5,11 +5,14 @@ node_modules/
 
 # Expo
 .expo/
+builds/
 dist/
 web-build/
 expo-env.d.ts
 
 # Native
+ios/
+android/
 .kotlin/
 *.orig.*
 *.jks

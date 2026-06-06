@@ -1,9 +1,12 @@
 import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import MoreScreen from '../screens/MoreScreen';
-import ContactsScreen from '../screens/ContactsScreen';
-import JobLetterScreen from '../screens/JobLetterScreen';
-import NightDeliveryScreen from '../screens/NightDeliveryScreen';
+import { colors } from '../theme';
+
+const MoreScreen = React.lazy(() => import('../screens/MoreScreen'));
+const ContactsScreen = React.lazy(() => import('../screens/ContactsScreen'));
+const JobLetterScreen = React.lazy(() => import('../screens/JobLetterScreen'));
+const NightDeliveryScreen = React.lazy(() => import('../screens/NightDeliveryScreen'));
 
 export type MoreStackParamList = {
   MoreMenu: undefined;
@@ -14,6 +17,14 @@ export type MoreStackParamList = {
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
 
+function ScreenFallback() {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgDefault }}>
+      <ActivityIndicator color={colors.primary} />
+    </View>
+  );
+}
+
 type MoreStackProps = {
   onChangeKey: () => void;
 };
@@ -22,11 +33,33 @@ export default function MoreStack({ onChangeKey }: MoreStackProps) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MoreMenu">
-        {() => <MoreScreen onChangeKey={onChangeKey} />}
+        {() => (
+          <React.Suspense fallback={<ScreenFallback />}>
+            <MoreScreen onChangeKey={onChangeKey} />
+          </React.Suspense>
+        )}
       </Stack.Screen>
-      <Stack.Screen name="Contacts" component={ContactsScreen} />
-      <Stack.Screen name="JobLetter" component={JobLetterScreen} />
-      <Stack.Screen name="NightDelivery" component={NightDeliveryScreen} />
+      <Stack.Screen name="Contacts">
+        {() => (
+          <React.Suspense fallback={<ScreenFallback />}>
+            <ContactsScreen />
+          </React.Suspense>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="JobLetter">
+        {() => (
+          <React.Suspense fallback={<ScreenFallback />}>
+            <JobLetterScreen />
+          </React.Suspense>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="NightDelivery">
+        {() => (
+          <React.Suspense fallback={<ScreenFallback />}>
+            <NightDeliveryScreen />
+          </React.Suspense>
+        )}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 }

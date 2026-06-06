@@ -1,8 +1,15 @@
 import React from 'react';
-import { ActivityIndicator, Alert, FlatList, Linking, Modal, RefreshControl, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Linking, Modal, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Contact, createContact, deleteContact, listContacts, updateContact } from '../api/contacts';
+import { AppHeader } from '../components/AppHeader';
+import { StoreCard } from '../components/StoreCard';
+import { colors, radius, spacing } from '../theme';
+import { sharedStyles } from '../styles/shared';
 
-export default function ContactsScreen({ onClose }: { onClose: () => void }) {
+export default function ContactsScreen() {
+  const navigation = useNavigation();
   const [contacts, setContacts] = React.useState<Contact[] | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -74,78 +81,85 @@ export default function ContactsScreen({ onClose }: { onClose: () => void }) {
     Alert.alert('Delete contact', `Delete ${c.name}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive', onPress: async () => {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
           try {
             await deleteContact(c.id);
             await fetchAll();
           } catch (e: any) {
             Alert.alert('Delete failed', e?.message || 'Unable to delete contact');
           }
-        }
-      }
+        },
+      },
     ]);
   }, [fetchAll]);
 
   const dial = React.useCallback((raw: string) => {
     const tel = raw.replace(/[^\d+]/g, '');
-    const url = `tel:${tel}`;
-    Linking.openURL(url).catch(() => Alert.alert('Call failed', 'Unable to initiate the call on this device.'));
+    Linking.openURL(`tel:${tel}`).catch(() =>
+      Alert.alert('Call failed', 'Unable to initiate the call on this device.'),
+    );
   }, []);
 
+  const headerActions = (
+    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+      <TouchableOpacity onPress={openCreate} style={sharedStyles.secondaryButton}>
+        <Text style={sharedStyles.secondaryButtonText}>Add</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={sharedStyles.secondaryButton}>
+        <Text style={sharedStyles.secondaryButtonText}>Back</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Contacts</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={openCreate} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Add</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onClose} style={styles.secondaryButton}>
-            <Text style={styles.secondaryButtonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+    <SafeAreaView style={sharedStyles.screen} edges={['top']}>
+      <AppHeader title="Contacts" action={headerActions} />
 
       {loading && !contacts ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#0ea5e9" />
-          <Text style={styles.muted}>Loading…</Text>
+        <View style={sharedStyles.centerBox}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={sharedStyles.muted}>Loading…</Text>
         </View>
       ) : error ? (
-        <View style={styles.centerBox}>
-          <Text style={styles.error}>{error}</Text>
+        <View style={sharedStyles.centerBox}>
+          <Text style={sharedStyles.error}>{error}</Text>
         </View>
       ) : (
         <FlatList
           data={contacts || []}
           keyExtractor={(item) => String(item.id)}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 24 }}
+          contentContainerStyle={sharedStyles.listContent}
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.rowSpaceBetween}>
+            <StoreCard>
+              <View style={styles.row}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardTitle}>{item.name}</Text>
+                  <Text style={styles.name}>{item.name}</Text>
                   <TouchableOpacity onPress={() => dial(item.phone_number)}>
-                    <Text style={styles.phone}>{item.phone_number}</Text>
+                    <Text style={sharedStyles.link}>{item.phone_number}</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity onPress={() => openEdit(item)} style={styles.secondaryButtonSmall}>
-                    <Text style={styles.secondaryButtonText}>Edit</Text>
+                <View style={styles.actions}>
+                  <TouchableOpacity onPress={() => openEdit(item)} style={sharedStyles.secondaryButtonSmall}>
+                    <Text style={sharedStyles.secondaryButtonText}>Edit</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => onDelete(item)} style={styles.secondaryButtonSmall}>
-                    <Text style={styles.secondaryButtonText}>Delete</Text>
+                  <TouchableOpacity onPress={() => onDelete(item)} style={sharedStyles.secondaryButtonSmall}>
+                    <Text style={sharedStyles.secondaryButtonText}>Delete</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-            </View>
+            </StoreCard>
           )}
-          ListEmptyComponent={(!loading && (!contacts || contacts.length === 0)) ? (
-            <View style={styles.centerBox}>
-              <Text style={styles.muted}>No contacts</Text>
-            </View>
-          ) : null}
+          ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+          ListEmptyComponent={
+            !loading && (!contacts || contacts.length === 0) ? (
+              <View style={sharedStyles.centerBox}>
+                <Text style={sharedStyles.muted}>No contacts</Text>
+              </View>
+            ) : null
+          }
         />
       )}
 
@@ -154,29 +168,29 @@ export default function ContactsScreen({ onClose }: { onClose: () => void }) {
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setEditorVisible(false)} />
           <View style={styles.modalPanel}>
             <Text style={styles.modalTitle}>{editing ? 'Edit Contact' : 'Add Contact'}</Text>
-            <Text style={styles.label}>Name</Text>
+            <Text style={sharedStyles.fieldLabel}>Name</Text>
             <TextInput
               value={name}
               onChangeText={setName}
               placeholder="Full name"
-              placeholderTextColor="#94a3b8"
-              style={styles.input}
+              placeholderTextColor={colors.textPlaceholder}
+              style={sharedStyles.input}
             />
-            <Text style={[styles.label, { marginTop: 10 }]}>Phone</Text>
+            <Text style={[sharedStyles.fieldLabel, { marginTop: spacing.md }]}>Phone</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
               placeholder="e.g. +1-222-333-4444"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={colors.textPlaceholder}
               keyboardType="phone-pad"
-              style={styles.input}
+              style={sharedStyles.input}
             />
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-              <TouchableOpacity onPress={() => setEditorVisible(false)} style={styles.secondaryButton}>
-                <Text style={styles.secondaryButtonText}>Cancel</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setEditorVisible(false)} style={sharedStyles.secondaryButton}>
+                <Text style={sharedStyles.secondaryButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={onSubmit} style={styles.primaryButton}>
-                <Text style={styles.primaryButtonText}>{editing ? 'Save' : 'Add'}</Text>
+              <TouchableOpacity onPress={onSubmit} style={sharedStyles.primaryButton}>
+                <Text style={sharedStyles.primaryButtonText}>{editing ? 'Save' : 'Add'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -187,27 +201,51 @@ export default function ContactsScreen({ onClose }: { onClose: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
-  headerRow: { paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { color: '#0f172a', fontSize: 20, fontWeight: '700' },
-  centerBox: { alignItems: 'center', justifyContent: 'center', padding: 24 },
-  muted: { color: '#6b7280', marginTop: 8 },
-  error: { color: '#ef4444', fontWeight: '700' },
-  card: { backgroundColor: 'white', borderRadius: 12, padding: 12, marginVertical: 6, borderColor: '#e5e7eb', borderWidth: 1 },
-  cardTitle: { color: '#0f172a', fontWeight: '700', marginBottom: 4 },
-  phone: { color: '#0ea5e9', fontWeight: '700' },
-  rowSpaceBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  secondaryButton: { borderColor: '#334155', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  secondaryButtonSmall: { borderColor: '#334155', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  secondaryButtonText: { color: '#334155', fontSize: 12 },
-  primaryButton: { backgroundColor: '#0ea5e9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
-  primaryButtonText: { color: 'white', fontWeight: '700' },
-  label: { color: '#0f172a', fontWeight: '600', marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: '#334155', color: '#0f172a', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' },
-  modalBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  modalPanel: { width: '90%', backgroundColor: 'white', borderRadius: 12, borderColor: '#e5e7eb', borderWidth: 1, padding: 16 },
-  modalTitle: { color: '#0f172a', fontSize: 18, fontWeight: '700', marginBottom: 8 },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  name: {
+    color: colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: colors.bgDefault,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  },
+  modalPanel: {
+    width: '90%',
+    backgroundColor: colors.bgSurface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  modalTitle: {
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: spacing.md,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
 });
-
-
