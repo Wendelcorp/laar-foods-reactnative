@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,54 +9,13 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { fetchLatestMonthlyLabour, type LabourData, type LabourStore } from '../api/monthlyLabour';
 import { AppHeader } from '../components/AppHeader';
 import { StatusBadge } from '../components/StatusBadge';
 import { StoreCard } from '../components/StoreCard';
 import { StoreCardHeader } from '../components/StoreCardHeader';
 import { colors, radius, spacing } from '../theme';
 import { sharedStyles } from '../styles/shared';
-
-type LabourStore = {
-  store_number: number;
-  net_sales: number;
-  hours: number;
-  average: number;
-  target_difference: number;
-  under_target: boolean;
-  days_with_data: number;
-};
-
-type LabourConsolidated = {
-  net_sales: string;
-  hours: string;
-  average: string;
-  target_difference: string;
-  under_target: boolean;
-};
-
-type LabourStoreSummary = {
-  total_stores: number;
-  stores_under_target: number;
-  stores_over_target: number;
-  best_store: { store_number: number; average: number };
-  worst_store: { store_number: number; average: number };
-};
-
-type LabourData = {
-  month_display: string;
-  consolidated: LabourConsolidated;
-  stores: Record<string, LabourStore>;
-  store_summary: LabourStoreSummary;
-};
-
-type LabourResponse = {
-  success: boolean;
-  data: LabourData;
-};
-
-const SECURE_KEY = 'LIVE_GPS_API_KEY';
 
 interface LabourScreenProps {
   onClose?: () => void;
@@ -79,6 +38,18 @@ function formatHours(value: string | number) {
   return new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
 }
 
+function formatUpdatedAt(iso?: string) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString('en-CA', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 function semanticColor(good: boolean) {
   return good ? colors.statusSuccess : colors.statusError;
 }
@@ -89,36 +60,22 @@ export default function LabourScreen({ onClose }: LabourScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [labourData, setLabourData] = useState<LabourData | null>(null);
 
-  const fetchLabourData = async (isRefresh = false) => {
+  const fetchLabourData = useCallback(async (isRefresh = false) => {
     try {
-      const apiKey = await SecureStore.getItemAsync(SECURE_KEY);
-      if (!apiKey) {
-        setError('No API key found');
-        return;
-      }
       if (!isRefresh) setLoading(true);
       setError(null);
-
-      const response = await axios.get<LabourResponse>(
-        'https://laar-foods-app-f5dacb5702ee.herokuapp.com/api/monthly_labours/latest',
-        { headers: { 'X-Api-Key': apiKey }, timeout: 15000 },
-      );
-
-      if (response.data.success) {
-        setLabourData(response.data.data);
-      } else {
-        setError('Failed to fetch labour data');
-      }
+      const data = await fetchLatestMonthlyLabour();
+      setLabourData(data);
     } catch (e: any) {
-      setError(e?.response?.data?.message || e?.message || 'Failed to fetch labour data');
+      setError(e?.message || 'Failed to fetch labour data');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLabourData();
-  }, []);
+  }, [fetchLabourData]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -203,6 +160,11 @@ export default function LabourScreen({ onClose }: LabourScreenProps) {
       return a.store_number - b.store_number;
     });
 
+    const maxDaysWithData = storesArray.reduce((max, store) => Math.max(max, store.days_with_data), 0);
+    const updatedLabel = formatUpdatedAt(labourData.updated_at);
+    const dayOfMonth = new Date().getDate();
+    const dataLooksStale = maxDaysWithData > 0 && maxDaysWithData < dayOfMonth - 1;
+
     return (
       <FlatList
         data={storesArray}
@@ -213,6 +175,14 @@ export default function LabourScreen({ onClose }: LabourScreenProps) {
         ListHeaderComponent={
           <View style={styles.headerSection}>
             <Text style={styles.monthTitle}>{labourData.month_display}</Text>
+            {updatedLabel ? (
+              <Text style={styles.updatedText}>Last updated {updatedLabel}</Text>
+            ) : null}
+            {dataLooksStale ? (
+              <Text style={styles.staleWarning}>
+                Only {maxDaysWithData} day{maxDaysWithData === 1 ? '' : 's'} of data this month — backend scrape may need to run.
+              </Text>
+            ) : null}
 
             <StoreCard variant="hero">
               <Text style={styles.cardHeading}>Consolidated</Text>
@@ -305,6 +275,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.textPrimary,
     textAlign: 'center',
+  },
+  updatedText: {
+    fontSize: 13,
+    color: colors.textTertiary,
+    textAlign: 'center',
+  },
+  staleWarning: {
+    fontSize: 13,
+    color: colors.statusError,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   cardHeading: {
     fontSize: 16,
