@@ -8,10 +8,30 @@ import { StoreCard } from '../components/StoreCard';
 import { StoreCardHeader } from '../components/StoreCardHeader';
 import { colors, spacing } from '../theme';
 import { sharedStyles } from '../styles/shared';
+import { gpsColorToTextColor, gpsMetricColor, normalizeGpsMetricLabel } from '../utils/gpsMetricColors';
 
 function formatScore(value: number | null) {
   if (value == null) return 'N/A';
   return value.toFixed(1);
+}
+
+function scoreColor(metric: string, value: number | null, apiColor?: string | null) {
+  return apiColor || gpsMetricColor(metric, value);
+}
+
+function ScoreCell({
+  metric,
+  value,
+  colorCode,
+}: {
+  metric: string;
+  value: number | null;
+  colorCode?: string | null;
+}) {
+  const color = gpsColorToTextColor(scoreColor(metric, value, colorCode));
+  return (
+    <Text style={[styles.rowValue, { color }]}>{formatScore(value)}</Text>
+  );
 }
 
 export default function GpsScreen({ embedded = false }: { embedded?: boolean }) {
@@ -74,10 +94,12 @@ export default function GpsScreen({ embedded = false }: { embedded?: boolean }) 
                     </View>
                     {store.metrics.map((row) => (
                       <View key={row.metric} style={styles.row}>
-                        <Text style={[styles.rowLabel, styles.metricCol]}>{row.metric}</Text>
-                        <Text style={styles.rowValue}>{formatScore(row.last_7_days)}</Text>
-                        <Text style={styles.rowValue}>{formatScore(row.last_28_days)}</Text>
-                        <Text style={styles.rowValue}>{formatScore(row.ytd)}</Text>
+                        <Text style={[styles.rowLabel, styles.metricCol]}>
+                          {normalizeGpsMetricLabel(row.metric)}
+                        </Text>
+                        <ScoreCell metric={row.metric} value={row.last_7_days} colorCode={row.last_7_days_color} />
+                        <ScoreCell metric={row.metric} value={row.last_28_days} colorCode={row.last_28_days_color} />
+                        <ScoreCell metric={row.metric} value={row.ytd} colorCode={row.ytd_color} />
                       </View>
                     ))}
                   </StoreCard>
@@ -134,7 +156,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   metricCol: {
-    flex: 1.6,
+    flex: 2.2,
     textAlign: 'left',
   },
   row: {
@@ -146,7 +168,7 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     color: colors.textPrimary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   rowValue: {

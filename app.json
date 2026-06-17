@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.laarfoods.view",
-      "buildNumber": "20",
+      "buildNumber": "35",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

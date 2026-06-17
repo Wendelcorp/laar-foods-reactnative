@@ -5,6 +5,9 @@ export interface GpsMetricRow {
   last_7_days: number | null;
   last_28_days: number | null;
   ytd: number | null;
+  last_7_days_color?: string | null;
+  last_28_days_color?: string | null;
+  ytd_color?: string | null;
 }
 
 export interface GpsStore {
