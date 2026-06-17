@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,9 +20,9 @@ const menuItems: Array<{
 }> = [
   { id: 'contacts', label: 'Contacts', action: 'contacts' },
   { id: 'labour', label: 'Labour', action: 'labour' },
+  { id: 'google-reviews', label: 'Google Reviews', action: 'google-reviews' },
   { id: 'job-letter', label: 'Job Letter', action: 'job-letter' },
   { id: 'night-delivery', label: 'Night Delivery', action: 'night-delivery' },
-  { id: 'google-reviews', label: 'Google Reviews', action: 'google-reviews' },
   { id: 'change-api-key', label: 'Change API Key', action: 'change-key' },
   { id: 'inventory', label: 'Inventory', action: 'coming-soon', disabled: true },
   { id: 'calibration', label: 'Calibration', action: 'coming-soon', disabled: true },
@@ -60,7 +60,7 @@ export default function MoreScreen({ onChangeKey }: MoreScreenProps) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <AppHeader title="More" />
-      <View style={styles.list}>
+      <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         {menuItems.map((item) => (
           <TouchableOpacity
             key={item.id}
@@ -79,7 +79,7 @@ export default function MoreScreen({ onChangeKey }: MoreScreenProps) {
             ) : null}
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
