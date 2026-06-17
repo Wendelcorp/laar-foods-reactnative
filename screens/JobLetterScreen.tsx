@@ -1,8 +1,25 @@
 import React from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { generateEmploymentLetter, arrayBufferToBase64 } from '../api/letters';
+import { AppHeader } from '../components/AppHeader';
+import { StoreCard } from '../components/StoreCard';
+import { colors, radius, spacing } from '../theme';
+import { sharedStyles } from '../styles/shared';
 
 const STORE_ADDRESSES = [
   '894 Upper James St, Hamilton, ON L9C 3A5',
@@ -12,7 +29,8 @@ const STORE_ADDRESSES = [
   '1816 Rymal Rd E, Hamilton, ON L0R 1P0',
 ];
 
-export default function JobLetterScreen({ onClose }: { onClose: () => void }) {
+export default function JobLetterScreen() {
+  const navigation = useNavigation();
   const [employeeNumber, setEmployeeNumber] = React.useState('');
   const [address, setAddress] = React.useState<string>(STORE_ADDRESSES[0]);
   const [employmentType, setEmploymentType] = React.useState<'full' | 'part'>('full');
@@ -47,55 +65,82 @@ export default function JobLetterScreen({ onClose }: { onClose: () => void }) {
     }
   }, [employeeNumber, address, employmentType, canSubmit]);
 
+  const headerAction = (
+    <TouchableOpacity onPress={() => navigation.goBack()} style={sharedStyles.secondaryButton}>
+      <Text style={sharedStyles.secondaryButtonText}>Back</Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Job Letter</Text>
-        <TouchableOpacity onPress={onClose} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Close</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={sharedStyles.screen} edges={['top']}>
+      <AppHeader title="Job Letter" action={headerAction} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
-          <Text style={styles.label}>Employee number</Text>
-          <TextInput
-            value={employeeNumber}
-            onChangeText={setEmployeeNumber}
-            placeholder="e.g. 46501"
-            placeholderTextColor="#94a3b8"
-            keyboardType="number-pad"
-            style={styles.input}
-          />
+        <ScrollView contentContainerStyle={sharedStyles.listContent} keyboardShouldPersistTaps="handled">
+          <StoreCard>
+            <Text style={sharedStyles.fieldLabel}>Employee number</Text>
+            <TextInput
+              value={employeeNumber}
+              onChangeText={setEmployeeNumber}
+              placeholder="e.g. 46501"
+              placeholderTextColor={colors.textPlaceholder}
+              keyboardType="number-pad"
+              style={sharedStyles.input}
+            />
 
-          <Text style={[styles.label, { marginTop: 14 }]}>Select Store</Text>
-          <View style={styles.segmentGroup}>
-            {STORE_ADDRESSES.map((addr) => (
-              <TouchableOpacity key={addr} onPress={() => setAddress(addr)} style={[styles.segmentItem, address === addr && styles.segmentItemActive]}>
-                <Text style={[styles.segmentText, address === addr && styles.segmentTextActive]}>{addr}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+            <Text style={[sharedStyles.fieldLabel, { marginTop: spacing.lg }]}>Select Store</Text>
+            <View style={styles.segmentGroup}>
+              {STORE_ADDRESSES.map((addr) => {
+                const active = address === addr;
+                return (
+                  <TouchableOpacity
+                    key={addr}
+                    onPress={() => setAddress(addr)}
+                    style={[styles.segmentItem, active && sharedStyles.activeSelection]}
+                  >
+                    <Text style={[styles.segmentText, active && sharedStyles.activeSelectionText]}>
+                      {addr}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-          <Text style={[styles.label, { marginTop: 14 }]}>Employment Type</Text>
-          <View style={styles.toggleRow}>
-            <TouchableOpacity onPress={() => setEmploymentType('full')} style={[styles.toggleBtn, employmentType === 'full' && styles.toggleBtnActive]}>
-              <Text style={[styles.toggleText, employmentType === 'full' && styles.toggleTextActive]}>Full-Time</Text>
+            <Text style={[sharedStyles.fieldLabel, { marginTop: spacing.lg }]}>Employment Type</Text>
+            <View style={styles.toggleRow}>
+              {(['full', 'part'] as const).map((type) => {
+                const active = employmentType === type;
+                const label = type === 'full' ? 'Full-Time' : 'Part-Time';
+                return (
+                  <TouchableOpacity
+                    key={type}
+                    onPress={() => setEmploymentType(type)}
+                    style={[styles.toggleBtn, active && sharedStyles.activeSelection]}
+                  >
+                    <Text style={[styles.toggleText, active && sharedStyles.activeSelectionText]}>
+                      {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              onPress={onGenerate}
+              style={[sharedStyles.primaryButton, !canSubmit && { opacity: 0.6 }]}
+              disabled={!canSubmit}
+            >
+              {submitting ? (
+                <View style={styles.submittingRow}>
+                  <ActivityIndicator color="#fff" />
+                  <Text style={[sharedStyles.primaryButtonText, { marginLeft: spacing.sm }]}>
+                    Generating…
+                  </Text>
+                </View>
+              ) : (
+                <Text style={sharedStyles.primaryButtonText}>Generate Letter</Text>
+              )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setEmploymentType('part')} style={[styles.toggleBtn, employmentType === 'part' && styles.toggleBtnActive]}>
-              <Text style={[styles.toggleText, employmentType === 'part' && styles.toggleTextActive]}>Part-Time</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity onPress={onGenerate} style={[styles.button, !canSubmit && { opacity: 0.6 }]} disabled={!canSubmit}>
-            {submitting ? (
-              <>
-                <ActivityIndicator color="#fff" />
-                <Text style={[styles.buttonText, { marginLeft: 8 }]}>Generating…</Text>
-              </>
-            ) : (
-              <Text style={styles.buttonText}>Generate Letter</Text>
-            )}
-          </TouchableOpacity>
+          </StoreCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -103,25 +148,45 @@ export default function JobLetterScreen({ onClose }: { onClose: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
-  headerRow: { paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { color: '#0f172a', fontSize: 20, fontWeight: '700' },
-  label: { color: '#0f172a', fontWeight: '600', marginBottom: 6 },
-  input: { borderWidth: 1, borderColor: '#334155', color: '#0f172a', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8 },
-  button: { backgroundColor: '#0ea5e9', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8, marginTop: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  buttonText: { color: 'white', fontWeight: '700' },
-  secondaryButton: { borderColor: '#334155', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  secondaryButtonText: { color: '#334155', fontSize: 12 },
-  segmentGroup: { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, overflow: 'hidden' },
-  segmentItem: { paddingHorizontal: 12, paddingVertical: 10, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-  segmentItemActive: { backgroundColor: '#e0f2fe' },
-  segmentText: { color: '#334155' },
-  segmentTextActive: { color: '#0ea5e9', fontWeight: '700' },
-  toggleRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  toggleBtn: { flex: 1, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: 'white', paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  toggleBtnActive: { borderColor: '#0ea5e9' },
-  toggleText: { color: '#334155', fontWeight: '600' },
-  toggleTextActive: { color: '#0ea5e9' },
+  segmentGroup: {
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+  },
+  segmentItem: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.bgSurface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderDefault,
+  },
+  segmentText: {
+    color: colors.textPrimary,
+    fontSize: 14,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  toggleBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.borderDefault,
+    backgroundColor: colors.bgSurface,
+    paddingVertical: spacing.md,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+  },
+  toggleText: {
+    color: colors.textPrimary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  submittingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
-
-

@@ -3,20 +3,36 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import {
   fetchGoogleReviews,
   type GoogleReview,
   type GoogleReviewStore,
   type GoogleReviewsResponse,
 } from '../api/googleReviews';
+import { AppHeader } from '../components/AppHeader';
+import { StoreCard } from '../components/StoreCard';
+import { StoreCardHeader } from '../components/StoreCardHeader';
+import { sharedStyles } from '../styles/shared';
+import { colors, spacing } from '../theme';
 
-export default function GoogleReviewsScreen({ onClose }: { onClose: () => void }) {
+const TRACKED_STORE_IDS = [6, 941, 1674, 5767, 7456] as const;
+
+function sortStores(stores: GoogleReviewStore[]) {
+  const byNumber = new Map(stores.map((store) => [Number(store.store_number), store]));
+  return TRACKED_STORE_IDS.map((storeId) => byNumber.get(storeId)).filter(
+    (store): store is GoogleReviewStore => store != null,
+  );
+}
+
+export default function GoogleReviewsScreen() {
+  const navigation = useNavigation();
   const [data, setData] = React.useState<GoogleReviewsResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -44,64 +60,77 @@ export default function GoogleReviewsScreen({ onClose }: { onClose: () => void }
     fetchAll({ isRefresh: true });
   }, [fetchAll]);
 
+  const storeSections = React.useMemo(
+    () => sortStores(data?.stores ?? []),
+    [data?.stores],
+  );
+
+  const headerAction = (
+    <TouchableOpacity onPress={() => navigation.goBack()} style={sharedStyles.secondaryButton}>
+      <Text style={sharedStyles.secondaryButtonText}>Back</Text>
+    </TouchableOpacity>
+  );
+
   const renderStore = ({ item }: { item: GoogleReviewStore }) => (
     <View style={styles.storeSection}>
-      <View style={styles.storeHeaderRow}>
-        <Text style={styles.storeTitle}>Store {item.store_number}</Text>
-        <View style={styles.ratingPill}>
-          <Text style={styles.ratingPillText}>
-            Avg {formatRating(item.average_rating)}
-          </Text>
-        </View>
-      </View>
-      <Text style={styles.storeMeta}>
-        Showing {item.reviews.length} five-star reviews from the latest {item.scanned_review_count ?? data?.review_scan_limit ?? 5} Google reviews
-      </Text>
+      <StoreCard variant="hero">
+        <StoreCardHeader
+          storeId={item.store_number}
+          trailing={
+            <View style={sharedStyles.summaryPill}>
+              <Text style={sharedStyles.summaryPillText}>
+                Avg {formatRating(item.average_rating)}
+              </Text>
+            </View>
+          }
+        />
+        <Text style={styles.storeMeta}>
+          {item.reviews.length} five-star reviews from the latest{' '}
+          {item.scanned_review_count ?? data?.review_scan_limit ?? 5} Google reviews
+        </Text>
 
-      {item.reviews.length > 0 ? (
-        item.reviews.map((review) => (
-          <ReviewCard key={review.review_id || `${review.author}-${review.date}`} review={review} />
-        ))
-      ) : (
-        <View style={styles.emptyStoreCard}>
-          <Text style={styles.muted}>No five-star reviews found in the latest Google reviews for this store.</Text>
-        </View>
-      )}
+        {item.reviews.length > 0 ? (
+          item.reviews.map((review) => (
+            <ReviewRow
+              key={review.review_id || `${review.author}-${review.date}`}
+              review={review}
+              isLast={review === item.reviews[item.reviews.length - 1]}
+            />
+          ))
+        ) : (
+          <Text style={styles.emptyText}>No five-star reviews in the latest Google reviews.</Text>
+        )}
+      </StoreCard>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Google Reviews</Text>
-        <TouchableOpacity onPress={onClose} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Close</Text>
-        </TouchableOpacity>
-      </View>
+    <SafeAreaView style={sharedStyles.screen} edges={['top']}>
+      <AppHeader title="Google Reviews" action={headerAction} />
 
       {loading && !data ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#0ea5e9" />
-          <Text style={styles.muted}>Loading reviews...</Text>
+        <View style={sharedStyles.centerBox}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={sharedStyles.muted}>Loading reviews...</Text>
         </View>
       ) : error ? (
-        <View style={styles.centerBox}>
-          <Text style={styles.error}>{error}</Text>
-          <TouchableOpacity onPress={() => fetchAll()} style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Retry</Text>
+        <View style={sharedStyles.centerBox}>
+          <Text style={sharedStyles.error}>{error}</Text>
+          <TouchableOpacity onPress={() => fetchAll()} style={sharedStyles.primaryButton}>
+            <Text style={sharedStyles.primaryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <FlatList
-          data={data?.stores ?? []}
+          data={storeSections}
           keyExtractor={(item) => item.store_number}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={sharedStyles.listContent}
           renderItem={renderStore}
           ListEmptyComponent={
             !loading ? (
-              <View style={styles.centerBox}>
-                <Text style={styles.muted}>No Google reviews available</Text>
+              <View style={sharedStyles.centerBox}>
+                <Text style={sharedStyles.muted}>No Google reviews available</Text>
               </View>
             ) : null
           }
@@ -111,16 +140,14 @@ export default function GoogleReviewsScreen({ onClose }: { onClose: () => void }
   );
 }
 
-function ReviewCard({ review }: { review: GoogleReview }) {
+function ReviewRow({ review, isLast }: { review: GoogleReview; isLast: boolean }) {
   return (
-    <View style={styles.reviewCard}>
-      <View style={styles.reviewHeaderRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.author}>{review.author}</Text>
-          <Text style={styles.date}>{formatDate(review.date)}</Text>
-        </View>
-        <Text style={styles.stars}>{`${Math.max(0, Math.min(5, review.rating))}/5`}</Text>
+    <View style={[styles.reviewRow, isLast && styles.reviewRowLast]}>
+      <View style={styles.reviewHeader}>
+        <Text style={styles.author}>{review.author}</Text>
+        <Text style={styles.rating}>{review.rating}/5</Text>
       </View>
+      <Text style={styles.date}>{formatDate(review.date)}</Text>
       <Text style={styles.reviewText}>{review.text || 'Rating-only review'}</Text>
     </View>
   );
@@ -143,64 +170,55 @@ function formatRating(value?: number | null) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fafafa' },
-  headerRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  storeSection: {
+    marginBottom: spacing.xl,
+  },
+  storeMeta: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: spacing.md,
+  },
+  reviewRow: {
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderDefault,
+  },
+  reviewRowLast: {
+    borderBottomWidth: 0,
+  },
+  reviewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.md,
   },
-  title: { color: '#0f172a', fontSize: 20, fontWeight: '700' },
-  centerBox: { alignItems: 'center', justifyContent: 'center', padding: 24 },
-  muted: { color: '#6b7280', marginTop: 8 },
-  error: { color: '#ef4444', fontWeight: '700', textAlign: 'center', marginBottom: 12 },
-  listContent: { paddingHorizontal: 12, paddingBottom: 24 },
-  secondaryButton: {
-    borderColor: '#334155',
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+  author: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
   },
-  secondaryButtonText: { color: '#334155', fontSize: 12 },
-  primaryButton: {
-    backgroundColor: '#0ea5e9',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+  rating: {
+    color: colors.statusWarning,
+    fontSize: 13,
+    fontWeight: '700',
   },
-  primaryButtonText: { color: 'white', fontWeight: '700' },
-  storeSection: { marginBottom: 18 },
-  storeHeaderRow: {
-    paddingHorizontal: 4,
-    marginBottom: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  date: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
   },
-  storeTitle: { color: '#0f172a', fontSize: 22, fontWeight: '800' },
-  storeMeta: { color: '#6b7280', fontSize: 12, fontWeight: '600', marginBottom: 8, paddingHorizontal: 4 },
-  ratingPill: { backgroundColor: '#f1f5f9', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  ratingPillText: { color: '#334155', fontSize: 12, fontWeight: '700' },
-  reviewCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 6,
-    borderColor: '#e5e7eb',
-    borderWidth: 1,
+  reviewText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
   },
-  emptyStoreCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 12,
-    borderColor: '#e5e7eb',
-    borderWidth: 1,
+  emptyText: {
+    color: colors.textTertiary,
+    fontSize: 14,
+    fontWeight: '600',
   },
-  reviewHeaderRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  author: { color: '#0f172a', fontSize: 15, fontWeight: '700' },
-  date: { color: '#6b7280', fontSize: 12, fontWeight: '600', marginTop: 2 },
-  stars: { color: '#f59e0b', fontSize: 14, fontWeight: '800' },
-  reviewText: { color: '#334155', fontSize: 14, lineHeight: 20, marginTop: 10 },
 });

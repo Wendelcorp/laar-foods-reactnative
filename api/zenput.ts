@@ -14,6 +14,12 @@ export interface ZenputResponse {
   stores: ZenputStore[];
 }
 
+/** Zenput encodes store numbers in store_name, e.g. "100006" → 6, "100941" → 941 */
+export function zenputStoreNumber(storeName: string): number {
+  const parsed = parseInt(storeName.replace(/^1/, ''), 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 export async function fetchZenputLogs(): Promise<ZenputResponse> {
   const headers = await buildAuthHeaders();
   const apiKey = await getApiKey();
