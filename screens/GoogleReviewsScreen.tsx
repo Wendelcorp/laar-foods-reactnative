@@ -55,7 +55,7 @@ export default function GoogleReviewsScreen({ onClose }: { onClose: () => void }
         </View>
       </View>
       <Text style={styles.storeMeta}>
-        Showing {item.reviews.length} five-star reviews from the latest {item.scanned_review_count ?? data?.review_scan_limit ?? 25}
+        Showing {item.reviews.length} five-star reviews from the latest {item.scanned_review_count ?? data?.review_scan_limit ?? 5} Google reviews
       </Text>
 
       {item.reviews.length > 0 ? (
@@ -64,7 +64,7 @@ export default function GoogleReviewsScreen({ onClose }: { onClose: () => void }
         ))
       ) : (
         <View style={styles.emptyStoreCard}>
-          <Text style={styles.muted}>No five-star reviews found in the latest reviews for this store.</Text>
+          <Text style={styles.muted}>No five-star reviews found in the latest Google reviews for this store.</Text>
         </View>
       )}
     </View>
