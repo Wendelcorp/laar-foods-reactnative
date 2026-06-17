@@ -6,6 +6,7 @@ import LabourScreen from './screens/LabourScreen';
 import OnShiftScreen from './screens/OnShiftScreen';
 import ContactsScreen from './screens/ContactsScreen';
 import JobLetterScreen from './screens/JobLetterScreen';
+import GoogleReviewsScreen from './screens/GoogleReviewsScreen';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
 
@@ -97,6 +98,7 @@ export default function App() {
   const [onShiftVisible, setOnShiftVisible] = React.useState<boolean>(false);
   const [contactsVisible, setContactsVisible] = React.useState<boolean>(false);
   const [jobLetterVisible, setJobLetterVisible] = React.useState<boolean>(false);
+  const [googleReviewsVisible, setGoogleReviewsVisible] = React.useState<boolean>(false);
   const [zenputCookie, setZenputCookie] = React.useState<string | null>(null);
   const [cookieEditing, setCookieEditing] = React.useState<string>('');
   const [logsLoading, setLogsLoading] = React.useState<boolean>(false);
@@ -222,6 +224,7 @@ export default function App() {
         setOnShiftVisible(false);
         setContactsVisible(false);
         setJobLetterVisible(false);
+        setGoogleReviewsVisible(false);
         break;
       case 'Change Key':
         setMenuVisible(false);
@@ -247,6 +250,10 @@ export default function App() {
       case 'Job Letter':
         setMenuVisible(false);
         setJobLetterVisible(true);
+        break;
+      case 'Google Reviews':
+        setMenuVisible(false);
+        setGoogleReviewsVisible(true);
         break;
       default:
         setMenuVisible(false);
@@ -450,6 +457,7 @@ export default function App() {
               { label: 'On Shift' },
               { label: 'Job Letter' },
               { label: 'Contacts' },
+              { label: 'Google Reviews' },
               { label: 'Calibration', disabled: true },
               { label: 'Filters', disabled: true },
               { label: 'Change Key' },
@@ -498,6 +506,11 @@ export default function App() {
       {/* Job Letter Modal */}
       <Modal visible={jobLetterVisible} animationType="slide" onRequestClose={() => setJobLetterVisible(false)}>
         <JobLetterScreen onClose={() => setJobLetterVisible(false)} />
+      </Modal>
+
+      {/* Google Reviews Modal */}
+      <Modal visible={googleReviewsVisible} animationType="slide" onRequestClose={() => setGoogleReviewsVisible(false)}>
+        <GoogleReviewsScreen onClose={() => setGoogleReviewsVisible(false)} />
       </Modal>
       <View style={styles.tabRow}>
         {/* <TouchableOpacity onPress={() => setActiveTab('gps')} style={[styles.tabButton, activeTab === 'gps' && styles.tabButtonActive]}>
